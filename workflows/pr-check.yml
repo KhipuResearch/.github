@@ -1,0 +1,172 @@
+# ----------------------------------------------------------------------
+# Copyright 2025 KR-Labs. All rights reserved.
+# ----------------------------------------------------------------------
+# SPDX-License-Identifier: Apache-2.0
+#
+# KRL Pull Request Checks
+# Fast checks that run on every PR to provide quick feedback.
+
+name: PR Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  # ===========================================================================
+  # Quick Checks
+  # ===========================================================================
+  quick-checks:
+    name: Quick Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: "./Private IP/krl-dashboard/frontend/package-lock.json"
+
+      - name: Install dependencies
+        working-directory: ./Private IP/krl-dashboard/frontend
+        run: npm ci
+
+      - name: Lint check
+        working-directory: ./Private IP/krl-dashboard/frontend
+        run: npm run lint
+
+      - name: Format check
+        working-directory: ./Private IP/krl-dashboard/frontend
+        run: npx prettier --check "src/**/*.{ts,tsx,js,jsx,json,css,md}" || true
+
+      - name: Type check
+        working-directory: ./Private IP/krl-dashboard/frontend
+        run: npx tsc --noEmit || true
+
+  # ===========================================================================
+  # Commit Message Check
+  # ===========================================================================
+  commit-check:
+    name: Commit Message Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check commit messages
+        run: |
+          # Get all commit messages in this PR
+          commits=$(git log --format="%s" ${{ github.event.pull_request.base.sha }}..${{ github.sha }})
+
+          # Check each commit message
+          echo "$commits" | while read -r msg; do
+            if [ -z "$msg" ]; then
+              continue
+            fi
+
+            # Check length (should be < 72 chars for first line)
+            if [ ${#msg} -gt 72 ]; then
+              echo "⚠️ Warning: Commit message too long: $msg"
+            fi
+
+            echo "✓ $msg"
+          done
+
+  # ===========================================================================
+  # Dependency Audit
+  # ===========================================================================
+  dependency-audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Audit npm dependencies
+        working-directory: ./Private IP/krl-dashboard/frontend
+        run: npm audit --audit-level=high || true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install pip-audit
+        run: pip install pip-audit
+
+      - name: Audit Python dependencies (Premium Backend)
+        working-directory: ./Private IP/krl-premium-backend
+        run: pip-audit -r requirements.txt --ignore-vuln GHSA-v6rh-hp5x-86rv || true
+
+      - name: Audit Python dependencies (Dashboard Backend)
+        working-directory: ./Private IP/krl-dashboard/backend
+        run: pip-audit -r requirements.txt --ignore-vuln GHSA-v6rh-hp5x-86rv || true
+
+  # ===========================================================================
+  # PR Size Check
+  # ===========================================================================
+  pr-size:
+    name: PR Size Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check PR size
+        run: |
+          # Count changed lines
+          additions=$(git diff --stat ${{ github.event.pull_request.base.sha }}..${{ github.sha }} | tail -1 | awk '{print $4}')
+          deletions=$(git diff --stat ${{ github.event.pull_request.base.sha }}..${{ github.sha }} | tail -1 | awk '{print $6}')
+
+          total=$((additions + deletions))
+
+          echo "📊 PR Statistics:"
+          echo "  Additions: $additions"
+          echo "  Deletions: $deletions"
+          echo "  Total: $total"
+
+          # Warn if PR is too large
+          if [ "$total" -gt 1000 ]; then
+            echo ""
+            echo "⚠️ This PR has more than 1000 changed lines."
+            echo "Consider breaking it into smaller PRs for easier review."
+          fi
+
+  # ===========================================================================
+  # Label Check
+  # ===========================================================================
+  label-check:
+    name: Label Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check for required labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labels = context.payload.pull_request.labels.map(l => l.name);
+            const requiredCategories = ['bug', 'enhancement', 'documentation', 'maintenance', 'breaking'];
+
+            const hasCategory = requiredCategories.some(cat => labels.includes(cat));
+
+            if (!hasCategory) {
+              core.warning(`PR should have at least one category label: ${requiredCategories.join(', ')}`);
+            }
+
+            console.log(`Labels: ${labels.join(', ')}`);

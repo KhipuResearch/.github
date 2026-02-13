@@ -1,0 +1,367 @@
+# ----------------------------------------------------------------------
+# Copyright 2025 KR-Labs. All rights reserved.
+# ----------------------------------------------------------------------
+# SPDX-License-Identifier: Apache-2.0
+#
+# KRL Test Suite
+# Runs backend tests, frontend tests, and E2E tests on every push and PR.
+# Enforces coverage thresholds to ensure code quality.
+
+name: Test Suite
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  PYTHON_VERSION: "3.11"
+  NODE_VERSION: "20"
+
+jobs:
+  # ===========================================================================
+  # Backend Tests (Premium Backend)
+  # ===========================================================================
+  backend-premium-tests:
+    name: Backend (Premium) Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: krl_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install dependencies
+        working-directory: ./Private IP/krl-premium-backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov pytest-asyncio httpx
+
+      - name: Run tests with coverage
+        working-directory: ./Private IP/krl-premium-backend
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/krl_test
+          REDIS_URL: redis://localhost:6379/0
+          SECRET_KEY: test-secret-key-for-ci
+          ENVIRONMENT: test
+        run: |
+          pytest tests/ \
+            --cov=app \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            --cov-fail-under=80 \
+            -v
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./Private IP/krl-premium-backend/coverage.xml
+          flags: backend-premium
+          name: backend-premium-coverage
+        continue-on-error: true
+
+  # ===========================================================================
+  # Backend Tests (Dashboard Backend)
+  # ===========================================================================
+  backend-dashboard-tests:
+    name: Backend (Dashboard) Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: krl_dashboard_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install dependencies
+        working-directory: ./Private IP/krl-dashboard/backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov pytest-asyncio httpx
+
+      - name: Run tests with coverage
+        working-directory: ./Private IP/krl-dashboard/backend
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/krl_dashboard_test
+          REDIS_URL: redis://localhost:6379/0
+          SECRET_KEY: test-secret-key-for-ci
+          ENVIRONMENT: test
+        run: |
+          pytest tests/ \
+            --cov=. \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            --cov-fail-under=80 \
+            -v
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./Private IP/krl-dashboard/backend/coverage.xml
+          flags: backend-dashboard
+          name: backend-dashboard-coverage
+        continue-on-error: true
+
+  # ===========================================================================
+  # Frontend Tests
+  # ===========================================================================
+  frontend-tests:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: "./Private IP/krl-dashboard/frontend/package-lock.json"
+
+      - name: Install dependencies
+        working-directory: ./Private IP/krl-dashboard/frontend
+        run: npm ci
+
+      - name: Run linter
+        working-directory: ./Private IP/krl-dashboard/frontend
+        run: npm run lint
+
+      - name: Run type check
+        working-directory: ./Private IP/krl-dashboard/frontend
+        run: npm run type-check || true  # Type check optional for now
+
+      - name: Run unit tests with coverage
+        working-directory: ./Private IP/krl-dashboard/frontend
+        run: |
+          npm run test:coverage -- \
+            --coverage.reporter=json \
+            --coverage.reporter=text \
+            --coverage.thresholds.lines=80 \
+            --coverage.thresholds.functions=80 \
+            --coverage.thresholds.branches=70 \
+            --coverage.thresholds.statements=80
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./Private IP/krl-dashboard/frontend/coverage/coverage-final.json
+          flags: frontend
+          name: frontend-coverage
+        continue-on-error: true
+
+  # ===========================================================================
+  # E2E Tests (Playwright)
+  # ===========================================================================
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: [frontend-tests]  # Only run E2E if unit tests pass
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: krl_e2e_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: "./Private IP/krl-dashboard/frontend/package-lock.json"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install frontend dependencies
+        working-directory: ./Private IP/krl-dashboard/frontend
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: ./Private IP/krl-dashboard/frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Install backend dependencies
+        working-directory: ./Private IP/krl-dashboard/backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Start backend
+        working-directory: ./Private IP/krl-dashboard/backend
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/krl_e2e_test
+          REDIS_URL: redis://localhost:6379/0
+          SECRET_KEY: test-secret-key-for-ci
+          ENVIRONMENT: test
+        run: |
+          uvicorn main:app --host 0.0.0.0 --port 8000 &
+          sleep 5  # Wait for backend to start
+
+      - name: Run E2E tests
+        working-directory: ./Private IP/krl-dashboard/frontend
+        env:
+          PLAYWRIGHT_BASE_URL: http://localhost:3000
+          API_BASE_URL: http://localhost:8000
+          CI: true
+        run: npx playwright test --reporter=html
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: ./Private IP/krl-dashboard/frontend/playwright-report/
+          retention-days: 30
+
+  # ===========================================================================
+  # Security Scan
+  # ===========================================================================
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          format: "sarif"
+          output: "trivy-results.sarif"
+          severity: "CRITICAL,HIGH"
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: "trivy-results.sarif"
+        continue-on-error: true
+
+  # ===========================================================================
+  # Build Check
+  # ===========================================================================
+  build-check:
+    name: Build Check
+    runs-on: ubuntu-latest
+    needs: [frontend-tests]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: "./Private IP/krl-dashboard/frontend/package-lock.json"
+
+      - name: Install dependencies
+        working-directory: ./Private IP/krl-dashboard/frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: ./Private IP/krl-dashboard/frontend
+        run: npm run build
+
+      - name: Check build output
+        working-directory: ./Private IP/krl-dashboard/frontend
+        run: |
+          if [ ! -d ".next" ]; then
+            echo "Build failed: .next directory not found"
+            exit 1
+          fi
+          echo "Build successful"
