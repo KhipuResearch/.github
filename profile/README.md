@@ -6,7 +6,7 @@
 
 ## Open-Source Causal Inference for Policy Analysis
 
-Most policy analysis takes eight weeks. Not because the methods are hard. Because the infrastructure doesn't exist.
+Policy analysis takes weeks because the infrastructure has to be built from scratch every time. KRL provides the evidence infrastructure so analysts can focus on the analysis.
 
 Analysts spend the bulk of that time hunting data across federal agencies, cleaning inconsistent formats, debugging API authentication, and stitching together tools that were never designed to work together. The actual analysis—the part that answers the question—takes a fraction of the time. We built KRL to fix that ratio.
 
@@ -38,7 +38,7 @@ Each causal notebook includes a **"Does / Doesn't Show"** table—a forcing func
 
 ```bash
 # Clone the repository
-git clone https://github.com/KR-Labs/kass-notebooks.git
+git clone https://github.com/KR-Labs/kass.git
 
 # Install dependencies
 pip install -r requirements.txt
@@ -76,7 +76,7 @@ Community-tier data connectors ship with the notebooks and provide authenticated
 - **BLS Basic** — Bureau of Labor Statistics (headline indicators)
 - **Custom CSV upload** for your own datasets
 
-Additional connectors — including Census detailed tables, international sources (World Bank, IMF, OECD), and domain-specific feeds — are available through Professional and Enterprise tiers. See [krlabs.dev/pricing](https://krlabs.dev/pricing) for the full connector inventory.
+Additional connectors — including Census detailed tables, international sources (World Bank, IMF, OECD), and domain-specific feeds — are available through Professional and Enterprise tiers. See [krlabs.dev](https://krlabs.dev/subscriptions/) for the full connector inventory.
 
 The Community connectors handle rate limiting, caching, and error recovery so you can focus on the analysis. Notebooks that reference data beyond Community-tier access will note this in their requirements section.
 
@@ -129,7 +129,7 @@ KASS notebooks and Community-tier connectors are free and always will be. If you
 
 [![Subscribe to KRL Professional](https://img.shields.io/badge/Professional_Tier-Subscribe-0A2540?style=for-the-badge&logo=stripe&logoColor=white)](https://checkout.krlabs.dev/b/6oUdRa4Rp3lhbZv8939sk02)
 
-Full tier comparison and Enterprise options at [krlabs.dev/pricing](https://krlabs.dev/pricing).
+Full tier comparison and Enterprise options at [krlabs.dev](https://krlabs.dev/subscriptions/).
 
 **Not a Python user?** The KRL web platform provides the same analytical capabilities through a browser-based interface — no installation, no environment configuration. Details at [krlabs.dev](https://krlabs.dev).
 
@@ -148,7 +148,7 @@ KRL's platform capabilities extend beyond what's in this open-source repository.
 ## Connect
 
 - **Platform:** [krlabs.dev](https://krlabs.dev)
-- **GitHub:** [@KR-Labs](https://github.com/KR-Labs)
+- **GitHub:** [@KhipuResearch](https://github.com/KhipuResearch)
 - **Email:** info@krlabs.dev
 - **Support:** support@krlabs.dev
 
