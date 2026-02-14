@@ -127,7 +127,7 @@ Ground rules: be constructive, share context, give credit. If you build on someo
 
 KASS notebooks and Community-tier connectors are free and always will be. If your work demands expanded data access, production-scale automation, or enterprise compliance infrastructure — the platform scales with you.
 
-[![Subscribe to KRL Professional](https://img.shields.io/badge/Professional_Tier-Subscribe-0A2540?style=for-the-badge&logo=stripe&logoColor=white)](https://checkout.krlabs.dev/b/6oUdRa4Rp3lhbZv8939sk02)
+[![Subscribe to KRL Community](https://img.shields.io/badge/Community_Tier-Subscribe-0A2540?style=for-the-badge&logo=stripe&logoColor=white)](https://checkout.krlabs.dev/b/6oUdRa4Rp3lhbZv8939sk02)
 
 Full tier comparison and Enterprise options at [krlabs.dev](https://krlabs.dev/subscriptions/).
 
