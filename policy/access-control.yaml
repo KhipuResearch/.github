@@ -1,0 +1,140 @@
+# access-control.yaml — who can change what in KR-Labs/.github
+#
+# Scope: this meta-repository only. Does not govern consumer repos that copy
+# workflow templates from here — each consumer owns its own access control.
+#
+# Placeholder grammar: <TOKEN_TBD> values require operator confirmation before
+# enforcement. Values without angle brackets are declared-as-final in SPEC.md.
+---
+schema_version: "1.0"
+repository: "KR-Labs/.github"
+last_reviewed: "<LAST_REVIEW_DATE_TBD>"
+
+# ----------------------------------------------------------------------------
+# Principals
+# ----------------------------------------------------------------------------
+principals:
+  teams:
+    org_owners:
+      github_team: "<ORG_OWNER_TEAM_TBD>"
+      description: "GitHub org owners for KR-Labs. Full write on this repo."
+    platform_maintainers:
+      github_team: "<PLATFORM_MAINTAINERS_TEAM_TBD>"
+      description: "Maintainers of workflow templates and CI/CD standards."
+    profile_editors:
+      github_team: "<PROFILE_EDITORS_TEAM_TBD>"
+      description: "Curators of the public org landing page (profile/README.md)."
+
+  bots:
+    - name: "dependabot[bot]"
+      scope: "not_present"
+      note: "No dependabot.yml configured in this repo per SPEC.md §4. If introduced, grant write on version-bump PRs only."
+
+# ----------------------------------------------------------------------------
+# Zones — map directories to required approvers
+# ----------------------------------------------------------------------------
+zones:
+  profile_public:
+    paths:
+      - "profile/README.md"
+      - "profile/*.png"
+    required_reviewers:
+      - "profile_editors"
+    minimum_approvals: 1
+    rationale: >-
+      profile/README.md is the GitHub-rendered org landing page per SPEC.md §1
+      and §16.1. Operator instruction for this artifact pass: DO NOT MODIFY.
+    do_not_modify_tag: true
+
+  workflow_templates:
+    paths:
+      - "workflows/*.yml"
+    required_reviewers:
+      - "platform_maintainers"
+    minimum_approvals: 2
+    rationale: >-
+      Changes here propagate to every KRL consumer repo that re-copies the
+      templates. Higher approval bar. See DECISION 0003 on path coupling.
+    additional_checks:
+      - "yaml_parse_valid"
+      - "action_pin_policy_compliant"  # see DECISION 0002
+
+  decisions:
+    paths:
+      - "DECISIONS/*.md"
+    required_reviewers:
+      - "platform_maintainers"
+    minimum_approvals: 1
+    rationale: "ADRs are append-only; superseding an ADR requires its own ADR."
+    superseding_only: true
+
+  policy:
+    paths:
+      - "policy/*.yaml"
+      - "policy/README.md"
+    required_reviewers:
+      - "org_owners"
+      - "platform_maintainers"
+    minimum_approvals: 2
+    rationale: "Policy changes require joint org-owner + platform sign-off."
+
+  docs_informational:
+    paths:
+      - "SPEC.md"
+      - "ARCHITECTURE.md"
+      - "CALIBRATION_REQUIRED.md"
+      - "CI_CD_BEST_PRACTICES.md"
+      - "CI_CD_FIXES_SUMMARY.md"
+      - "tests/README.md"
+      - ".github/workflows/README.md"
+    required_reviewers:
+      - "platform_maintainers"
+    minimum_approvals: 1
+    rationale: "Specification and architecture updates; one reviewer sufficient."
+
+# ----------------------------------------------------------------------------
+# Branch protection
+# ----------------------------------------------------------------------------
+branch_protection:
+  main:
+    require_pull_request: true
+    require_signed_commits: "<SIGNED_COMMITS_POLICY_TBD>"
+    required_status_checks:
+      strict: true
+      contexts: []   # This repo has no self-CI per SPEC.md §2. See .github/workflows/README.md.
+    enforce_admins: false
+    required_linear_history: "<LINEAR_HISTORY_TBD>"
+    allow_force_pushes: false
+    allow_deletions: false
+    restrictions:
+      users: []
+      teams:
+        - "<ORG_OWNER_TEAM_TBD>"
+        - "<PLATFORM_MAINTAINERS_TEAM_TBD>"
+
+# ----------------------------------------------------------------------------
+# Merge authority
+# ----------------------------------------------------------------------------
+merge_authority:
+  default_merge_method: "squash"
+  allow_merge_commit: false
+  allow_rebase_merge: "<ALLOW_REBASE_MERGE_TBD>"
+  require_codeowner_review: true
+  codeowners_file: "<CODEOWNERS_FILE_TBD>"  # not yet created; see CALIBRATION_REQUIRED.md
+
+# ----------------------------------------------------------------------------
+# Release / tag authority
+# ----------------------------------------------------------------------------
+release_authority:
+  status: "not_applicable"
+  rationale: >-
+    This repo ships no artifacts, packages, or binaries. No release surface
+    exists. See SPEC.md §6 (Build & Run — Not applicable).
+
+# ----------------------------------------------------------------------------
+# Audit trail
+# ----------------------------------------------------------------------------
+audit:
+  log_location: "<AUDIT_LOG_LOCATION_TBD>"
+  retention: "<AUDIT_RETENTION_TBD>"
+  reviewed_quarterly: true
