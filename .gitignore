@@ -1,1 +1,10 @@
 .DS_Store
+
+# --- housekeeping 2026-08-20 ---
+_to_delete/
+.claude/worktrees/
+.claude/settings.local.json
+__pycache__/
+*.pyc
+.coverage
+.attrib-test
